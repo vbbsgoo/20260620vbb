@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼권분립 매칭 게임 (단계별 학습)</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #16a085;
+            --bg-color: #f8f9fa;
+            --card-back: #34495e;
+            --text-color: #2c3e50;
+            --border-color: #dcdde1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 26px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .step-indicator {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* 메인 레이아웃: 게임판과 우측 기록창 */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 950px;
+            align-items: flex-start;
+        }
+
+        /* 왼쪽 게임 영역 */
+        .game-area {
+            flex: 1.3;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            perspective: 1000px;
+        }
+
+        .card {
+            height: 130px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s;
+            cursor: pointer;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            transform: rotateY(180deg);
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            font-size: 14px;
+            font-weight: bold;
+            word-break: keep-all;
+        }
+
+        .card-front {
+            background-color: white;
+            color: var(--text-color);
+            transform: rotateY(180deg);
+            border: 2px solid var(--border-color);
+        }
+
+        .card-front.concept {
+            border-left: 5px solid var(--primary);
+        }
+        .card-front.description {
+            border-left: 5px solid var(--secondary);
+        }
+
+        .card-back {
+            background-color: var(--card-back);
+            color: white;
+            font-size: 26px;
+        }
+        .card-back::after {
+            content: "❓";
+        }
+
+        /* 우측 기록창 영역 */
+        .history-area {
+            flex: 0.9;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            align-self: stretch;
+            display: flex;
+            flex-direction: column;
+            min-height: 440px;
+        }
+
+        .history-area h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary);
+            color: #34495e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-list {
+            list-style: none;
+            overflow-y: auto;
+            flex: 1;
+            max-height: 360px;
+        }
+
+        .history-item {
+            background: #f1f2f6;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            line-height: 1.4;
+            border-left: 4px solid #74b9ff;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .history-item.step2-item {
+            border-left: 4px solid #ff7675;
+        }
+
+        .history-item .match-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 3px;
+        }
+
+        .history-item .match-desc {
+            color: #57606f;
+        }
+
+        .empty-history {
+            color: #a4b0be;
+            text-align: center;
+            margin-top: 50px;
+            font-size: 14px;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #57606f;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #3a5d8c;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .history-area {
+                min-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="step-indicator" id="stepBadge">1단계: 명칭 연결하기</div>
+        <h1>🏛️ 삼권분립 단계별 매칭 게임</h1>
+    </header>
+
+    <div class="main-layout">
+        <div class="game-area">
+            <div class="stats-container">
+                <div id="timer">남은 시간: 60초</div>
+                <div id="score">맞춘 쌍: 0 / 3</div>
+            </div>
+            <div class="game-container" id="gameGrid"></div>
+        </div>
+
+        <div class="history-area">
+            <h2>📜 내가 찾은 삼권분립 지식</h2>
+            <ul class="history-list" id="historyList">
+                <div class="empty-history" id="emptyMsg">카드의 짝을 맞추면 여기에 학습 기록이 채워져요!</div>
+            </ul>
+        </div>
+    </div>
+
+    <div class="modal show" id="gameModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">1단계: 기관 명칭 연결하기</h2>
+            <p id="modalText">국회, 정부, 법원이 각각 어떤 일을 하는 곳인지 올바른 설명 카드를 찾아 매칭해 보세요!<br><br>짝을 맞춘 지식은 우측 기록창에 차곡차곡 쌓입니다.</p>
+            <button class="btn" id="modalBtn" onclick="handleModalAction()">시작하기</button>
+        </div>
+    </div>
+
+    <script>
+        // 1단계 데이터 (명칭과 기초 역할)
+        const step1Data = [
+            { id: 1, text: "국회 (입법부)", type: "concept", partner: "법을 만드는 곳" },
+            { id: 1, text: "법을 만드는 곳", type: "description", partner: "국회 (입법부)" },
+            { id: 2, text: "정부 (행정부)", type: "concept", partner: "법에 따라 국가 살림을 하는 곳" },
+            { id: 2, text: "법에 따라 국가 살림을 하는 곳", type: "description", partner: "정부 (행정부)" },
+            { id: 3, text: "법원 (사법부)", type: "concept", partner: "법에 따라 재판을 하는 곳" },
+            { id: 3, text: "법에 따라 재판을 하는 곳", type: "description", partner: "법원 (사법부)" }
+        ];
+
+        // 2단계 데이터 (상호 견제)
+        const step2Data = [
+            { id: 4, text: "국정 감사", type: "concept", partner: "국회가 정부를 견제하는 방법" },
+            { id: 4, text: "국회가 정부를 견제하는 방법", type: "description", partner: "국정 감사" },
+            { id: 5, text: "대법관 임명 동의권", type: "concept", partner: "국회가 법원을 견제하는 방법" },
+            { id: 5, text: "국회가 법원을 견제하는 방법", type: "description", partner: "대법관 임명 동의권" },
+            { id: 6, text: "위헌 법률 심판", type: "concept", partner: "법원이 국회를 견제하는 방법" },
+            { id: 6, text: "법원이 국회를 견제하는 방법", type: "description", partner: "위헌 법률 심판" }
+        ];
+
+        let currentStep = 1;
+        let currentData = [];
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let timeLeft = 60;
+        let timerInterval = null;
+        let isProcessing = false;
+        let totalPairsInStep = 3;
+
+        const gameGrid = document.getElementById('gameGrid');
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const gameModal = document.getElementById('gameModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalText = document.getElementById('modalText');
+        const modalBtn = document.getElementById('modalBtn');
+        const stepBadge = document.getElementById('stepBadge');
+        const historyList = document.getElementById('historyList');
+        const emptyMsg = document.getElementById('emptyMsg');
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        // 모달 버튼 제어
+        function handleModalAction() {
+            if (modalBtn.textContent === "시작하기" || modalBtn.textContent === "2단계 시작하기") {
+                initGame();
+            } else if (modalBtn.textContent === "처음부터 다시하기") {
+                currentStep = 1;
+                historyList.innerHTML = '<div class="empty-history" id="emptyMsg">카드의 짝을 맞추면 여기에 학습 기록이 채워져요!</div>';
+                initGame();
+            }
+        }
+
+        // 해당 단계 게임 준비
+        function initGame() {
+            gameModal.classList.remove('show');
+            gameGrid.innerHTML = '';
+            flippedCards = [];
+            matchedPairs = 0;
+            timeLeft = 60;
+            isProcessing = false;
+
+            if (currentStep === 1) {
+                currentData = step1Data;
+                stepBadge.textContent = "1단계: 명칭 연결하기";
+                stepBadge.style.backgroundColor = "#4a6fa5";
+            } else {
+                currentData = step2Data;
+                stepBadge.textContent = "2단계: 삼권분립과 견제";
+                stepBadge.style.backgroundColor = "#e74c3c";
+            }
+
+            scoreDisplay.textContent = `맞춘 쌍: ${matchedPairs} / ${totalPairsInStep}`;
+            timerDisplay.textContent = `남은 시간: ${timeLeft}초`;
+
+            cards = shuffle([...currentData]);
+            cards.forEach((data, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.id = data.id;
+                card.dataset.index = index;
+                card.dataset.text = data.text;
+                card.dataset.partner = data.partner;
+                card.dataset.type = data.type;
+
+                card.innerHTML = `
+                    <div class="card-face card-back"></div>
+                    <div class="card-face card-front ${data.type}">${data.text}</div>
+                `;
+
+                card.addEventListener('click', flipCard);
+                gameGrid.appendChild(card);
+            });
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `남은 시간: ${timeLeft}초`;
+                if (timeLeft <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function flipCard() {
+            if (isProcessing) return;
+            if (this.classList.contains('flipped') || this.classList.contains('matched')) return;
+
+            this.classList.add('flipped');
+            flippedCards.push(this);
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            isProcessing = true;
+            const [card1, card2] = flippedCards;
+
+            if (card1.dataset.id === card2.dataset.id && card1.dataset.index !== card2.dataset.index) {
+                // 매칭 성공
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    scoreDisplay.textContent = `맞춘 쌍: ${matchedPairs} / ${totalPairsInStep}`;
+                    
+                    // 우측 대시보드에 기록 추가
+                    addHistoryLog(card1, card2);
+
+                    flippedCards = [];
+                    isProcessing = false;
+
+                    if (matchedPairs === totalPairsInStep) {
+                        endGame(true);
+                    }
+                }, 500);
+            } else {
+                // 매칭 실패
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    isProcessing = false;
+                }, 900);
+            }
+        }
+
+        // 우측 기록창에 매칭된 기록 누적하기
+        function addHistoryLog(c1, c2) {
+            const msg = document.getElementById('emptyMsg');
+            if (msg) msg.remove();
+
+            // 개념 카드와 설명 카드 구분해서 정렬
+            const conceptText = c1.dataset.type === "concept" ? c1.dataset.text : c2.dataset.text;
+            const descText = c1.dataset.type === "description" ? c1.dataset.text : c2.dataset.text;
+
+            const li = document.createElement('li');
+            li.classList.add('history-item');
+            if (currentStep === 2) {
+                li.classList.add('step2-item');
+            }
+
+            li.innerHTML = `
+                <div class="match-title">[${currentStep}단계] 📍 ${conceptText}</div>
+                <div class="match-desc">💡 ${descText}</div>
+            `;
+            
+            // 최근 기록이 맨 위로 오도록 추가
+            historyList.insertBefore(li, historyList.firstChild);
+        }
+
+        function endGame(isWin) {
+            clearInterval(timerInterval);
+            if (isWin) {
+                if (currentStep === 1) {
+                    modalTitle.textContent = "🎉 1단계 통과 완료!";
+                    modalText.textContent = "국회, 정부, 법원의 기초 명칭과 역할을 완벽히 마스터했습니다! 우측에 쌓인 기록을 소리 내어 읽어보고 다음 단계로 넘어가 볼까요?";
+                    modalBtn.textContent = "2단계 시작하기";
+                    currentStep = 2;
+                } else {
+                    modalTitle.textContent = "🏆 최종 미션 성공!";
+                    modalText.textContent = "2단계 권력 견제 시스템(국정감사, 임명동의권, 위헌법률심판)까지 모두 맞췄습니다! 삼권분립의 원리를 완벽하게 정복했습니다. 우측 리스트에서 복습해 보세요!";
+                    modalBtn.textContent = "처음부터 다시하기";
+                }
+            } else {
+                modalTitle.textContent = "⏰ 시간 초과!";
+                modalText.textContent = "아쉽게도 시간이 부족했어요. 다시 도전해서 우측 지식 기록 창을 마저 채워보세요!";
+                modalBtn.textContent = "처음부터 다시하기";
+            }
+            gameModal.classList.add('show');
+        }
+    </script>
+</body>
+</html>
